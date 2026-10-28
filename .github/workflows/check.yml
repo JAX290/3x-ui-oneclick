@@ -1,0 +1,32 @@
+name: scripts
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 语法检查（bash -n）
+        run: |
+          for f in scripts/*.sh; do
+            echo "== $f"
+            bash -n "$f"
+          done
+
+      - name: dry-run（不改系统）
+        run: bash scripts/install.sh --dry-run
+
+      - name: 参数解析自检
+        run: |
+          bash scripts/install.sh --dry-run --dest www.apple.com:443 --sni www.apple.com --port 8443 | tee /tmp/out.txt
+          grep -q "www.apple.com" /tmp/out.txt
+          grep -q "8443" /tmp/out.txt
+
+      - name: 帮助信息
+        run: bash scripts/install.sh --help
