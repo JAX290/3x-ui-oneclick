@@ -173,7 +173,39 @@ openssl s_client -connect 127.0.0.1:443 -servername www.microsoft.com </dev/null
 
 ---
 
-## 9. 执行出错的排查顺序
+## 9. 客户端安装包下载页（手机连不上 GitHub 时用）
+
+部署脚本最后会自动执行一次「搬运客户端」：把 Android APK / Windows EXE-ZIP / macOS dmg 下载到服务器，并开一个静态下载页。
+
+```bash
+# 地址（脚本最后会打印，也会写进 /root/3xui-info.txt）
+http://你的IP/            # 默认优先用 80 端口
+http://你的IP:8080/       # 80 被占用时自动换端口
+
+# 文件在哪
+ls -lh /var/www/clients
+
+# 服务状态 / 重启
+systemctl status 3xui-clients --no-pager
+systemctl restart 3xui-clients
+
+# 更新安装包
+bash /root/fetch-clients.sh --force
+
+# 只下载不开网页 / 下载更多包 / 换端口
+bash /root/fetch-clients.sh --no-service
+bash /root/fetch-clients.sh --all
+bash /root/fetch-clients.sh --port 8080
+```
+
+不想在这一步花流量和时间，部署时加 `--no-clients` 跳过。
+
+> 面板本身没有「文件管理」功能（它的前端是编译好的），所以下载页是独立的静态页面。
+> 页面只有安装包和说明，**不包含节点链接**，可以放心给手机访问。
+
+---
+
+## 10. 执行出错的排查顺序
 
 ```bash
 # 1. 看脚本日志

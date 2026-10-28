@@ -216,6 +216,26 @@ bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.
 
 ---
 
+## G. 客户端下载页打不开 / 页面空白
+
+按顺序查：
+
+```bash
+bash /root/info.sh                          # 1. 看【客户端下载页】那行的地址和端口
+systemctl status 3xui-clients --no-pager    # 2. 服务在不在跑
+systemctl restart 3xui-clients              # 3. 重启一下
+ls -lh /var/www/clients                     # 4. 文件到底下下来没有
+ufw status | grep -E '80|8080'              # 5. 系统防火墙放行了吗
+```
+
+- 地址对了、服务也在跑 → 云厂商安全组没放行该端口
+- 文件目录是空的 → 下载失败，重跑 `bash /root/fetch-clients.sh --force`（会自动换镜像）
+- 换端口：`bash /root/fetch-clients.sh --port 8080`，然后重新看 `info.sh`
+
+> 下载页是公开的，只放安装包、不含节点信息；不想长期开着可以 `systemctl disable --now 3xui-clients`。
+
+---
+
 ## F. 还是搞不定
 
 1. 收集信息：

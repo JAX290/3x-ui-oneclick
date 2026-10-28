@@ -28,6 +28,7 @@
 | 手动建 VLESS + REALITY 入站 | 调面板 API 自动建好 |
 | 自己拼 `vless://` 链接 | 直接输出链接 + 终端二维码 |
 | 配防火墙 | 自动放行 SSH / 节点端口 / 面板端口 |
+| 客户端装不上（连不上 GitHub） | 自动把 APK/EXE 搬到服务器，生成下载页 |
 | 记一堆参数 | 全部写进 `/root/3xui-info.txt`，随时 `bash /root/info.sh` 回看 |
 
 ---
@@ -93,6 +94,9 @@ bash <(curl -Ls https://raw.githubusercontent.com/JAX290/3x-ui-oneclick/main/scr
 2. 把上面那条 `vless://` 链接复制过去，或直接扫码
 3. 打开客户端开关，浏览器访问 `https://www.google.com` 验证
 
+> **手机/电脑连不上 GitHub 下不了客户端？** 部署时脚本已经把 APK/EXE 搬到你的服务器上并开了下载页，
+> 浏览器打开脚本最后打印的地址（形如 `http://你的IP/`）按系统点下载即可，详见 [docs/04](docs/04-client-setup.md)。
+
 ---
 
 ## 服务器上常用的几条命令
@@ -103,10 +107,11 @@ bash <(curl -Ls https://raw.githubusercontent.com/JAX290/3x-ui-oneclick/main/scr
 | 重启面板（改配置后） | `systemctl restart x-ui` |
 | 看面板运行状态 | `systemctl status x-ui --no-pager` |
 | 打开官方管理菜单 | `x-ui` |
+| 更新客户端安装包（APK/EXE） | `bash /root/fetch-clients.sh --force` |
 | 看安装日志 | `cat /var/log/3xui-oneclick.log` |
 | 卸载 | `bash /root/uninstall.sh` |
 
-> `info.sh` / `uninstall.sh` 需要先下载到服务器，或直接用仓库里的完整地址运行（见 docs/03）。
+> 以上脚本在部署时会自动放到 `/root`；没装过也可以直接用仓库里的完整地址运行（见 docs/03）。
 
 ---
 
@@ -138,6 +143,7 @@ bash /root/install.sh --help
 | `--panel-port 30000` | 指定面板端口 |
 | `--email phone` | 客户端名字（多设备时用得上） |
 | `--no-firewall` | 不碰防火墙（自己在云控制台放行） |
+| `--no-clients` | 不下载客户端安装包、不开下载页（省流量/时间） |
 | `--force` | 面板已装过时继续配置 |
 | `--reinstall` | 卸载重装 |
 

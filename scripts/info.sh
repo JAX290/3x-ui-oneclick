@@ -108,6 +108,20 @@ else
     msg "  到面板里看：${PANEL_BASE}/"
 fi
 
+CLIENTS_URL=""
+if [[ -f /etc/x-ui/clients.env ]]; then
+    # shellcheck disable=SC1091
+    . /etc/x-ui/clients.env
+    CLIENTS_URL="${CLIENTS_URL:-}"
+fi
+if [[ -n "$CLIENTS_URL" ]]; then
+    printf '%s\n' "${C_BLD}【客户端下载页】${C_RST}"
+    msg "  地址  : ${C_BLU}${CLIENTS_URL}${C_RST}"
+    msg "  服务  : $(systemctl is-active 3xui-clients 2>/dev/null || echo unknown)"
+    msg "  ${C_DIM}手机/电脑连不上 GitHub 时，用它下 APK/EXE；更新: bash /root/fetch-clients.sh --force${C_RST}"
+    msg ""
+fi
+
 if [[ -f /root/3xui-info.txt ]]; then
     msg "${C_DIM}完整信息文件： /root/3xui-info.txt${C_RST}"
 fi
