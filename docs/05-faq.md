@@ -1,0 +1,234 @@
+# 05 · 常见问题（FAQ）
+
+> 按「你遇到的现象」查，不用从头读。
+
+---
+
+## A. 安装阶段
+
+### A1. `bash: command not found` 或提示语法错误
+
+用错了 shell。确认第一行是 `bash <(...)` 而不是 `sh`。若仍报错，改用：
+
+```bash
+curl -Ls https://raw.githubusercontent.com/JAX290/3x-ui-oneclick/main/scripts/install.sh -o /root/install.sh
+bash /root/install.sh
+```
+
+### A2. `curl: (35) Connection reset` / `(7) Failed to connect`
+
+GitHub 直连失败。见 [02-connect-vps.md](02-connect-vps.md) 第 6 节的三个方案（镜像 / 本地下载上传 / 官方脚本）。
+
+### A3. `This machine has already installed 3x-ui`
+
+之前装过。想继续建节点：`bash /root/install.sh --force`；想重装：`bash /root/install.sh --reinstall`；只想看信息：`bash /root/info.sh`。
+
+### A4. `Port 443 is already in use`
+
+443 被别的程序占用（比如自带的 web 服务）。换端口：
+
+```bash
+bash /root/install.sh --port 8443
+```
+
+并记得放行 8443（系统和云控制台两层）。
+
+### A5. 安装到一半断线 / 关了窗口
+
+重跑同一条命令即可，脚本是幂等的（已装的会跳过）。如果卡在「面板已安装」提示，用 `--force`。
+
+### A6. 提示内存不足 / 安装很慢卡住
+
+512MB 机器建议先加 swap：
+
+```bash
+fallocate -l 1G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+```
+
+然后重跑。
+
+---
+
+## B. 面板打不开
+
+### B1. 浏览器一直转圈 / 超时
+
+按顺序查：
+
+```bash
+systemctl status x-ui --no-pager          # 服务在不在跑
+ss -lntp | grep -E ':(你的面板端口)'       # 端口在不在监听
+ufw status                                # 系统防火墙放行了没
+```
+
+- 服务没跑：`systemctl restart x-ui`，还不行看 `journalctl -u x-ui -n 50 --no-pager`
+- 端口没监听：面板端口被改过，用 `x-ui setting -show true` 查实际端口
+- ufw 没放行：`ufw allow 面板端口/tcp`
+- 都正常：**云厂商安全组**没放行（去控制台加规则）
+
+### B2. 忘了面板端口 / 路径 / 密码
+
+```bash
+cat /etc/x-ui/install-result.env      # 安装时生成，全是明文
+# 或
+x-ui setting -show true
+```
+
+密码忘了想重置：
+
+```bash
+x-ui          # 进菜单，选「重置面板用户名和密码」
+```
+
+### B3. 面板能打开但提示密码错误
+
+用户名密码区分大小写，注意别把 `l`（小写L）看成 `1`、`0` 看成 `O`。复制 `install-result.env` 里的值最稳。
+
+### B4. 不敢把面板暴露在公网
+
+用 SSH 隧道，把面板端口只绑在本机：
+
+```bash
+# 在你自己的电脑上执行（不要关这个窗口）
+ssh -L 30000:127.0.0.1:30000 root@你的服务器IP
+```
+
+然后浏览器访问 `http://127.0.0.1:30000/面板路径`。看完关掉窗口即断开。
+
+```bash
+# 更彻底：让面板只监听本机（改完记得重启）
+x-ui setting -listenIP 127.0.0.1
+systemctl restart x-ui
+```
+
+---
+
+## C. 节点连不上
+
+### C1. 客户端显示「已连接」但网页打不开
+
+这是「连上了但没网」，见下面 D 节。
+
+### C2. 客户端一直「连接中」/ 超时
+
+1. 服务器上确认端口在监听：`ss -lntp | grep :443`
+2. 服务器上自测握手：
+   ```bash
+   openssl s_client -connect 127.0.0.1:443 -servername www.microsoft.com </dev/null 2>/dev/null | openssl x509 -noout -subject
+   ```
+   没输出 → 伪装目标不可达，换一个（`--dest www.apple.com:443 --sni www.apple.com`）
+3. 云安全组放行了吗？
+4. 客户端和服务器**时间**是否准确（手机时间手动改过也会失败）
+
+### C3. 昨天能用，今天突然全挂
+
+大概率 **IP 被墙**。判断：
+
+```bash
+# 在你自己电脑上
+ping 你的服务器IP        # 通不通
+ssh root@你的服务器IP    # 还能不能连
+```
+
+- SSH 也连不上 → IP 被封，去商家后台换 IP（多数商家支持，可能收费）
+- SSH 能连但代理不通 → 端口被封，换端口重试（`--port 8443`）
+
+### C4. 二维码扫不出来
+
+终端字符二维码对手机摄像头不友好。改用复制链接方式，或调大终端字体、换深色背景。
+
+### C5. iOS 提示「不受信任的开发者」/ 装不上
+
+Shadowrocket/sing-box 需要非国区 App Store 账号。sing-box 用美区账号免费下载。
+
+---
+
+## D. 能连上但没网 / 部分网站打不开
+
+### D1. 完全没网
+
+1. 服务器本身能不能上外网：`curl -I https://www.google.com`
+   - 不能 → 这台机器的 IP 没外网或被墙，换 IP
+2. 面板里节点是否启用（入站列表里是绿色）
+3. 客户端选的是「全局」还是「规则」——先用**全局**排除规则问题
+
+### D2. Google 能开，YouTube 卡 / 某些站打不开
+
+- 线路问题：换机房或换协议（加 Hysteria2/TUIC）
+- MTU 问题：客户端里把 MTU 改成 `1280` 试试
+- DNS 污染：客户端开启「远程 DNS」/ DoH
+
+### D3. 国内网站变慢
+
+用了「全局」模式。切成「规则」模式，国内直连。
+
+### D4. 速度只有几十 KB/s
+
+按可能性排序：
+
+1. **VPS 带宽本身小**（很多便宜机 100Mbps 共享，晚高峰掉速）
+2. **线路绕路**：`ping` 延迟高、`traceroute` 绕美国
+3. **TCP 拥塞**：确认 BBR 开了 `sysctl net.ipv4.tcp_congestion_control` 输出 `bbr`
+4. **移动网络丢包**：加一条 Hysteria2（UDP）节点通常立竿见影
+
+---
+
+## E. 安全 / 维护
+
+### E1. 怎么备份？换服务器怎么迁移？
+
+```bash
+# 备份（数据库 + 配置 + 安装信息）
+tar czf /root/3xui-backup-$(date +%F).tar.gz /etc/x-ui /root/3xui-info.txt
+
+# 下载到本地
+scp root@服务器IP:/root/3xui-backup-*.tar.gz .
+```
+
+迁移：新机器装好后解压覆盖 `/etc/x-ui`，再 `systemctl restart x-ui`。
+
+### E2. 怎么升级 3x-ui？
+
+```bash
+x-ui          # 菜单里选「更新面板」
+# 或
+bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh) 
+```
+
+升级前先备份 `/etc/x-ui/x-ui.db`。
+
+### E3. 链接被别人拿去了怎么办？
+
+面板 → 客户端 → 删掉旧客户端，新建一个，重新扫码。旧链接立即失效。
+
+### E4. 想看每台设备用了多少流量？
+
+面板首页有总流量；「客户端」页每行显示该客户端的上下行与配额。
+
+### E5. 怎么限制只有自己能用？
+
+面板 → 客户端 → 设置 `IP 限制`（`limitIp`）= 1~2，配合 fail2ban，别人拿去也用不了。
+
+### E6. 需要限制每月流量吗？
+
+面板 → 客户端 → 设置「总流量」与「到期时间」，超额自动停用。
+
+---
+
+## F. 还是搞不定
+
+1. 收集信息：
+   ```bash
+   tail -n 50 /var/log/3xui-oneclick.log
+   systemctl status x-ui --no-pager | head -20
+   ```
+2. 去仓库提 Issue（**贴日志，别贴你的链接和密码**）。
+3. 或者用官方方式重装：
+   ```bash
+   bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
+   ```
+
+---
+
+返回 → [README](../README.md)

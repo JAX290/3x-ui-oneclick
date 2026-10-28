@@ -1,0 +1,10 @@
+# 本地/临时文件
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# 部署过程中在服务器上生成的文件（不要提交）
+3xui-info.txt
+oneclick.env
+x-ui.db
