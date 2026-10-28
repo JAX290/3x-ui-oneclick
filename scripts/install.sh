@@ -511,6 +511,8 @@ INBOUND_JSON=$(cat <<JSON
   "protocol": "vless",
   "expiryTime": 0,
   "total": 0,
+  "shareAddr": "${PUBLIC_IP}",
+  "shareAddrStrategy": "custom",
   "settings": {
     "clients": [
       {
@@ -607,7 +609,7 @@ LINK=""
 link_ok() { # $1=link
     [[ "$1" =~ ^vless://[0-9A-Za-z-]+@[^:/@?#]+:[0-9]+\? ]] || return 1
     [[ "$1" == *"pbk="* && "$1" == *"sid="* && "$1" == *"sni="* ]] || return 1
-    [[ "$1" != *"@:"* && "$1" != *"@0.0.0.0:"* && "$1" != *"@127.0.0.1:"* ]] || return 1
+    [[ "$1" != *"@:"* && "$1" != *"@0.0.0.0:"* && "$1" != *"@127.0.0.1:"* && "$1" != *"@localhost:"* ]] || return 1
     return 0
 }
 if [[ -n "$PUBLIC_IP" && -n "$UUID" && -n "$PUB" && -n "$SHORT_ID" ]]; then
