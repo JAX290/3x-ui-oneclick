@@ -142,6 +142,28 @@ ssh root@你的服务器IP    # 还能不能连
 
 Shadowrocket/sing-box 需要非国区 App Store 账号。sing-box 用美区账号免费下载。
 
+### C6. 导入后「订阅」列表里空的 / 没有可用节点
+
+**最常见的原因：把单条配置当成了订阅。**
+
+| 类型 | 长什么样 | 正确用法 |
+|---|---|---|
+| 单条配置（脚本给的就是这个） | `vless://uuid@IP:443?...` | 配置页 → `+` → **从剪贴板导入**（或扫码） |
+| 订阅 | `http://IP:端口/路径/sub/xxxx` | 订阅页 → 添加上面的 http 地址 |
+
+v2rayNG 的「订阅」只认 http(s) 地址，`vless://` 粘进去必然是空的。
+
+正确步骤：删掉误建的订阅条目 → 配置页 `+` → 从剪贴板导入 → 列表出现备注为
+`oneclick-reality` 的节点 → 选中 → 点右下角 `V` 启动。
+
+如果「配置」列表也没有，依次检查：
+
+1. `bash /root/info.sh` 重新复制，`vless://` 到 `#oneclick-reality` 必须是**一整行**
+2. v2rayNG 版本要新（REALITY 需要 1.8+）
+3. 手动添加兜底（`+` → 手动输入 → VLESS）：
+   地址=服务器 IP、端口=443、UUID=info 里的值、流控=`xtls-rprx-vision`、
+   传输=`tcp`、安全=`reality`、SNI=`www.microsoft.com`、公钥/shortId 填 info 里的值、指纹=`chrome`
+
 ---
 
 ## D. 能连上但没网 / 部分网站打不开

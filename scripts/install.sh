@@ -775,7 +775,7 @@ msg "  地址  : ${C_BLU}http://${PUBLIC_IP:-服务器IP}:${PANEL_PORT_ACTUAL}/$
 msg "  用户名: ${PANEL_USER}"
 msg "  密码  : ${PANEL_PASS}"
 msg ""
-printf '%s\n' "${C_BLD}【 节点链接 】${C_RST}  ${C_DIM}手机/电脑客户端里“从剪贴板导入”${C_RST}"
+printf '%s\n' "${C_BLD}【 节点链接 】${C_RST}  ${C_DIM}这是“单条配置”，不是订阅：客户端里选「从剪贴板导入 / 扫码」，别粘到“订阅”里${C_RST}"
 msg "  ${LINK}"
 msg ""
 if [[ "${AUTO_FAIL:-0}" != "1" ]] && command -v qrencode >/dev/null 2>&1; then
