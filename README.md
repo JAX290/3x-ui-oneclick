@@ -167,8 +167,8 @@ bash /root/install.sh --help
 
 | 项目 | 状态 |
 |---|---|
-| 脚本语法（`bash -n`） | ✅ 通过 |
-| `--dry-run` 计划输出 | ✅ 通过 |
+| 脚本语法（`bash -n`） | ✅ 通过（GitHub Actions 每次推送自动跑） |
+| `--dry-run` 计划输出 | ✅ 通过（CI 在 Ubuntu 上实测） |
 | 入站 JSON 结构 | ✅ 已按 3x-ui v3.11.0 的 schema（前端 zod 定义 / OpenAPI）逐字段校验 |
 | 真实 VPS 端到端 | ⚠️ 首次发布，尚未在真机上跑通完整流程 |
 
