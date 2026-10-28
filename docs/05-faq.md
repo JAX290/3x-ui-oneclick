@@ -196,6 +196,20 @@ command -v qrencode >/dev/null && qrencode -t ANSIUTF8 -m 1 "$LINK"
 
 新版脚本创建入站时已经自动写入这个字段（`shareAddr` + `shareAddrStrategy=custom`），不会再出现。
 
+### C8. 面板二维码扫不出来 / 链接长得离谱
+
+典型症状：面板里点“二维码”手机扫不动，或者复制出来的链接有 **两千多个字符**。
+
+两个原因，都在「REALITY 设置」里：
+
+1. **点过「MLDSA65 验证」的生成按钮** → 链接里会多出 `pqv=<超长串>`，二维码密到无法扫。
+   把入站编辑 → 安全 → REALITY 里的「MLDSA65 验证 / mldsa65Verify」**清空**再保存。
+2. **SNI（serverNames）填了多个域名** → 面板按顺序取第一个生成链接（例如 `sni=wwwqa.microsoft.com`），
+   与「目标 dest」的域名不一致 → 即使导入也握不了手。
+   **serverNames 只填一个，且必须与 dest 的域名完全一致**（dest=`www.microsoft.com:443` → SNI `www.microsoft.com`）。
+
+改完后面板里 `sni` 正确、链接长度正常（约 280 字符），二维码就能扫了。
+
 ---
 
 ## D. 能连上但没网 / 部分网站打不开

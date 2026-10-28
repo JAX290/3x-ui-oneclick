@@ -65,9 +65,10 @@ systemctl restart x-ui
 | 传输协议 | `RAW`（旧版叫 `tcp`，v3.11 改名为 RAW） | REALITY 只支持 TCP/RAW |
 | 安全 | `reality` | 借用真实网站证书伪装，不需要域名/证书 |
 | 目标(dest) | `www.microsoft.com:443` | 伪装对象，要支持 TLS1.3 + HTTP/2 |
-| SNI | `www.microsoft.com` | 必须与目标站域名一致 |
+| SNI | `www.microsoft.com`（**只填一个**，与目标同域名） | 填多个时面板会取第一个生成链接，可能不匹配 |
 | 私钥/公钥 | 点「获取」自动生成 | REALITY 密钥对；私钥留在服务器 |
 | shortId | 点「获取」自动生成 | 客户端身份校验用 |
+| MLDSA65 验证 | **留空，别点生成** | 生成后链接会多出数千字符的 `pqv=`，二维码直接扫不动 |
 | 流控 flow | `xtls-rprx-vision` | 配合 REALITY 的加速/抗探测模式 |
 | 嗅探 | 保持开启 | 让 Xray 识别域名，路由更准 |
 
