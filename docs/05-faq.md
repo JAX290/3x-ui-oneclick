@@ -164,6 +164,31 @@ v2rayNG 的「订阅」只认 http(s) 地址，`vless://` 粘进去必然是空�
    地址=服务器 IP、端口=443、UUID=info 里的值、流控=`xtls-rprx-vision`、
    传输=`tcp`、安全=`reality`、SNI=`www.microsoft.com`、公钥/shortId 填 info 里的值、指纹=`chrome`
 
+### C7. 点启动提示「无效的配置」
+
+v2rayNG 的这个报错意思是「解析出来的配置不完整」。最常见的原因是**链接里的服务器地址为空**：
+
+```text
+vless://uuid@:443?...        ← @ 后面直接是冒号（地址为空）
+vless://uuid@0.0.0.0:443     ← 地址不可用
+vless://uuid@127.0.0.1:443   ← 地址指向本机
+```
+
+原因：早期版本的脚本优先采用了面板生成的分享链接，而面板如果不知道公网 IP，生成的地址可能是空的。
+
+**修复**（新版脚本已改为自己拼链接）：在服务器上重新生成一条正确链接：
+
+```bash
+get(){ awk -F= -v k="$1" '$1==k{sub(/^[^=]*=/,"");print;exit}' /etc/x-ui/oneclick.env; }
+UUID=$(get UUID); SID=$(get SHORT_ID); PBK=$(get PUBLIC_KEY); SNI=$(get SNI)
+IP=$(get SERVER_IP); PORT=$(get VLESS_PORT); NAME=$(get CLIENT_REMARK)
+LINK="vless://${UUID}@${IP}:${PORT}?type=tcp&security=reality&encryption=none&pbk=${PBK}&fp=chrome&sni=${SNI}&sid=${SID}&spx=%2F&flow=xtls-rprx-vision#${NAME:-node}"
+echo "$LINK"
+command -v qrencode >/dev/null && qrencode -t ANSIUTF8 -m 1 "$LINK"
+```
+
+然后在 v2rayNG 里**删掉旧配置**，重新扫码/粘贴导入。
+
 ---
 
 ## D. 能连上但没网 / 部分网站打不开

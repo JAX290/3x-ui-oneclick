@@ -564,11 +564,31 @@ INBOUND_JSON=$(cat <<JSON
 JSON
 )
 
-# 幂等：同名入站已存在则跳过
-EXISTING_ID=$(api GET "/panel/api/inbounds/list" | jq -r --arg r "$CLIENT_REMARK" '.obj[]? | select(.remark==$r) | .id' 2>/dev/null | head -1 || true)
-if [[ -n "$EXISTING_ID" ]]; then
-    warn "已存在同名入站（id=${EXISTING_ID}，remark=${CLIENT_REMARK}），跳过创建。"
-    warn "如需新建一个，请加参数 --email 换个名字。"
+# 幂等：同名入站已存在则复用它的真实参数（不要用刚生成的新密钥，否则客户端会对不上）
+EXISTING_JSON=$(api GET "/panel/api/inbounds/list" | jq -c --arg r "$CLIENT_REMARK" '[.obj[]? | select(.remark==$r)][0] // empty' 2>/dev/null || true)
+if [[ -n "$EXISTING_JSON" ]]; then
+    warn "已存在同名入站（remark=${CLIENT_REMARK}），复用它的配置，不重复创建。"
+    OLD_UUID=$(printf '%s' "$EXISTING_JSON" | jq -r '.settings.clients[0].id // empty')
+    OLD_EMAIL=$(printf '%s' "$EXISTING_JSON" | jq -r '.settings.clients[0].email // empty')
+    OLD_SUB=$(printf '%s' "$EXISTING_JSON" | jq -r '.settings.clients[0].subId // empty')
+    OLD_PRIV=$(printf '%s' "$EXISTING_JSON" | jq -r '.streamSettings.realitySettings.privateKey // empty')
+    OLD_PUB=$(printf '%s' "$EXISTING_JSON" | jq -r '.streamSettings.realitySettings.settings.publicKey // empty')
+    OLD_SID=$(printf '%s' "$EXISTING_JSON" | jq -r '.streamSettings.realitySettings.shortIds[0] // empty')
+    OLD_DEST=$(printf '%s' "$EXISTING_JSON" | jq -r '.streamSettings.realitySettings.target // empty')
+    OLD_SNI=$(printf '%s' "$EXISTING_JSON" | jq -r '.streamSettings.realitySettings.serverNames[0] // empty')
+    OLD_PORT=$(printf '%s' "$EXISTING_JSON" | jq -r '.port // empty')
+    [[ -n "$OLD_UUID" ]] && UUID="$OLD_UUID"
+    [[ -n "$OLD_SUB" ]] && SUB_ID="$OLD_SUB"
+    [[ -n "$OLD_PRIV" ]] && PRIV="$OLD_PRIV"
+    [[ -n "$OLD_PUB" ]] && PUB="$OLD_PUB"
+    [[ -n "$OLD_SID" ]] && SHORT_ID="$OLD_SID"
+    [[ -n "$OLD_DEST" ]] && DEST="$OLD_DEST"
+    [[ -n "$OLD_SNI" ]] && SNI="$OLD_SNI"
+    [[ -n "$OLD_PORT" ]] && VLESS_PORT="$OLD_PORT"
+    if [[ -n "$OLD_EMAIL" && "$OLD_EMAIL" != "$CLIENT_EMAIL" ]]; then
+        warn "该入站里已有客户端「${OLD_EMAIL}」，脚本不会重复加人。"
+        warn "要加第二台设备：面板 → 入站 → ${CLIENT_REMARK} → 客户端 → 添加（然后扫新二维码）。"
+    fi
 else
     ADD_RESP=$(api POST "/panel/api/inbounds/add" "$INBOUND_JSON")
     if [[ "$(printf '%s' "$ADD_RESP" | jq -r '.success // false' 2>/dev/null)" == "true" ]]; then
@@ -581,13 +601,26 @@ else
     fi
 fi
 
-# 取分享链接
+# 生成分享链接：优先自己拼。面板在不知道公网 IP 时可能生成「地址为空」的链接
+# （形如 vless://uuid@:443...），客户端会报「无效的配置」。
 LINK=""
-if [[ "${AUTO_FAIL:-0}" != "1" ]]; then
-    LINK=$(api GET "/panel/api/clients/links/${CLIENT_EMAIL}" | jq -r '.obj[0] // empty' 2>/dev/null || true)
+link_ok() { # $1=link
+    [[ "$1" =~ ^vless://[0-9A-Za-z-]+@[^:/@?#]+:[0-9]+\? ]] || return 1
+    [[ "$1" == *"pbk="* && "$1" == *"sid="* && "$1" == *"sni="* ]] || return 1
+    [[ "$1" != *"@:"* && "$1" != *"@0.0.0.0:"* && "$1" != *"@127.0.0.1:"* ]] || return 1
+    return 0
+}
+if [[ -n "$PUBLIC_IP" && -n "$UUID" && -n "$PUB" && -n "$SHORT_ID" ]]; then
+    CAND=$(printf 'vless://%s@%s:%s?type=tcp&security=reality&encryption=none&pbk=%s&fp=chrome&sni=%s&sid=%s&spx=%%2F&flow=xtls-rprx-vision#%s' \
+        "$UUID" "$PUBLIC_IP" "$VLESS_PORT" "$PUB" "$SNI" "$SHORT_ID" "$CLIENT_REMARK")
+    if link_ok "$CAND"; then LINK="$CAND"; fi
+fi
+if [[ -z "$LINK" && "${AUTO_FAIL:-0}" != "1" ]]; then
+    CAND=$(api GET "/panel/api/clients/links/${CLIENT_EMAIL}" | jq -r '.obj[0] // empty' 2>/dev/null || true)
+    if [[ -n "$CAND" ]] && link_ok "$CAND"; then LINK="$CAND"; fi
 fi
 if [[ -z "$LINK" ]]; then
-    LINK="vless://${UUID}@${PUBLIC_IP}:${VLESS_PORT}?type=tcp&security=reality&encryption=none&pbk=${PUB}&fp=chrome&sni=${SNI}&sid=${SHORT_ID}&spx=%2F&flow=xtls-rprx-vision#${CLIENT_REMARK}"
+    warn "没能生成合法链接：可加 --server-ip 指定公网 IP 后重跑，或到面板里复制分享链接。"
 fi
 
 # ---------------------------- 防火墙 -----------------------------------------
@@ -712,16 +745,16 @@ fi
 mkdir -p /etc/x-ui
 umask 077
 cat > "$STATE_FILE" <<STATE
-CLIENT_EMAIL=${CLIENT_EMAIL}
-CLIENT_REMARK=${CLIENT_REMARK}
-VLESS_PORT=${VLESS_PORT}
-DEST=${DEST}
-SNI=${SNI}
-UUID=${UUID}
-SHORT_ID=${SHORT_ID}
-PUBLIC_KEY=${PUB}
-SERVER_IP=${PUBLIC_IP}
-LINK=${LINK}
+CLIENT_EMAIL=$(printf '%q' "$CLIENT_EMAIL")
+CLIENT_REMARK=$(printf '%q' "$CLIENT_REMARK")
+VLESS_PORT=$(printf '%q' "$VLESS_PORT")
+DEST=$(printf '%q' "$DEST")
+SNI=$(printf '%q' "$SNI")
+UUID=$(printf '%q' "$UUID")
+SHORT_ID=$(printf '%q' "$SHORT_ID")
+PUBLIC_KEY=$(printf '%q' "$PUB")
+SERVER_IP=$(printf '%q' "$PUBLIC_IP")
+LINK=$(printf '%q' "$LINK")
 STATE
 
 cat > "$INFO_FILE" <<INFO

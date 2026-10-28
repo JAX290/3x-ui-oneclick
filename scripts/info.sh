@@ -43,21 +43,21 @@ WEB_BASE_PATH="${WEB_BASE_PATH#/}"; WEB_BASE_PATH="${WEB_BASE_PATH%/}"
 [[ "$WEB_BASE_PATH" == "/" ]] && WEB_BASE_PATH=""
 
 CLIENT_EMAIL=""; REMARK=""; VLESS_PORT=""; DEST=""; SNI=""; UUID=""; SHORT_ID=""; PUB=""; IP=""
+# 安全读取状态文件：值里可能含 & ? = 等字符，不能直接 source
+get_state() {
+    awk -F= -v k="$1" '$1==k{sub(/^[^=]*=/,"");print;exit}' "$STATE_FILE" 2>/dev/null || true
+}
 if [[ -f "$STATE_FILE" ]]; then
-    # shellcheck disable=SC1090
-    . "$STATE_FILE"
-    CLIENT_EMAIL="${CLIENT_EMAIL:-}"
-    REMARK="${CLIENT_REMARK:-}"
-    VLESS_PORT="${VLESS_PORT:-}"
-    DEST="${DEST:-}"
-    SNI="${SNI:-}"
-    UUID="${UUID:-}"
-    SHORT_ID="${SHORT_ID:-}"
-    PUB="${PUBLIC_KEY:-}"
-    IP="${SERVER_IP:-}"
+    CLIENT_EMAIL="$(get_state CLIENT_EMAIL)"
+    REMARK="$(get_state CLIENT_REMARK)"
+    VLESS_PORT="$(get_state VLESS_PORT)"
+    DEST="$(get_state DEST)"
+    SNI="$(get_state SNI)"
+    UUID="$(get_state UUID)"
+    SHORT_ID="$(get_state SHORT_ID)"
+    PUB="$(get_state PUBLIC_KEY)"
+    IP="$(get_state SERVER_IP)"
 fi
-# shellcheck disable=SC2153
-[[ -n "${SERVER_IP:-}" ]] && IP="${SERVER_IP}"
 
 if [[ -z "$IP" ]]; then
     IP=$(curl -4 -fsS --max-time 6 https://api.ipify.org 2>/dev/null | tr -d '[:space:]' || true)
@@ -78,18 +78,19 @@ msg "  地址  : ${C_BLU}http://${IP:-服务器IP}:${PANEL_PORT}/${WEB_BASE_PATH
 msg "  服务  : $(systemctl is-active x-ui 2>/dev/null || echo unknown)"
 msg ""
 
-# 实时拉取节点链接（面板运行时会覆盖旧链接）
+# 生成节点链接：优先用已知参数自己拼（面板可能在不知道公网 IP 时给出空地址的链接）
 LINK=""
-if [[ -n "$API_TOKEN" && -n "$CLIENT_EMAIL" ]]; then
+if [[ -n "$UUID" && -n "$PUB" && -n "$SHORT_ID" && -n "$IP" && -n "$VLESS_PORT" ]]; then
+    LINK=$(printf 'vless://%s@%s:%s?type=tcp&security=reality&encryption=none&pbk=%s&fp=chrome&sni=%s&sid=%s&spx=%%2F&flow=xtls-rprx-vision#%s' \
+        "$UUID" "$IP" "$VLESS_PORT" "$PUB" "$SNI" "$SHORT_ID" "${REMARK:-node}")
+fi
+if [[ -z "$LINK" && -n "$API_TOKEN" && -n "$CLIENT_EMAIL" ]]; then
     NO_PROXY="127.0.0.1,localhost" link_json=$(curl -sS --max-time 10 \
         -H "Authorization: Bearer ${API_TOKEN}" \
         "${PANEL_BASE}/panel/api/clients/links/${CLIENT_EMAIL}" 2>/dev/null || true)
     if [[ -n "${link_json:-}" ]]; then
         LINK=$(printf '%s' "$link_json" | jq -r '.obj[0] // empty' 2>/dev/null || true)
     fi
-fi
-if [[ -z "$LINK" && -n "$UUID" && -n "$PUB" && -n "$IP" ]]; then
-    LINK="vless://${UUID}@${IP}:${VLESS_PORT}?type=tcp&security=reality&encryption=none&pbk=${PUB}&fp=chrome&sni=${SNI}&sid=${SHORT_ID}&spx=%2F&flow=xtls-rprx-vision#${REMARK:-node}"
 fi
 
 if [[ -n "$LINK" ]]; then
