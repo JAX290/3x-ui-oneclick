@@ -176,6 +176,7 @@ bash /root/install.sh --help
 | 脚本语法（`bash -n`） | ✅ 通过（GitHub Actions 每次推送自动跑） |
 | `--dry-run` 计划输出 | ✅ 通过（CI 在 Ubuntu 上实测） |
 | 入站 JSON 结构 | ✅ 已按 3x-ui v3.11.0 的 schema（前端 zod 定义 / OpenAPI）逐字段校验 |
+| 客户端包清单解析 | ✅ CI 实测解析成功：v2rayNG 2.3.11 / sing-box 1.14.4 / v2rayN 7.25.6 / Clash Verge 2.5.8（共 317MB） |
 | 真实 VPS 端到端 | ⚠️ 首次发布，尚未在真机上跑通完整流程 |
 
 说明：安装步骤依据 3x-ui 官方非交互安装文档（`XUI_NONINTERACTIVE=1` + `/etc/x-ui/install-result.env`）；
