@@ -145,7 +145,7 @@ openssl s_client -connect 127.0.0.1:443 -servername www.microsoft.com </dev/null
    - 备注：`oneclick-reality`
    - 协议：`vless`
    - 监听端口：`443`
-   - 传输协议：`tcp`
+   - 传输协议：`RAW`（v3.11 里就是原来的 tcp）
    - 安全：`reality`
 2. Reality 区域：
    - **目标(dest)**：`www.microsoft.com:443`

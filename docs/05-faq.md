@@ -162,7 +162,7 @@ v2rayNG 的「订阅」只认 http(s) 地址，`vless://` 粘进去必然是空�
 2. v2rayNG 版本要新（REALITY 需要 1.8+）
 3. 手动添加兜底（`+` → 手动输入 → VLESS）：
    地址=服务器 IP、端口=443、UUID=info 里的值、流控=`xtls-rprx-vision`、
-   传输=`tcp`、安全=`reality`、SNI=`www.microsoft.com`、公钥/shortId 填 info 里的值、指纹=`chrome`
+   传输=`RAW`（旧版叫 tcp）、安全=`reality`、SNI=`www.microsoft.com`、公钥/shortId 填 info 里的值、指纹=`chrome`
 
 ### C7. 点启动提示「无效的配置」
 

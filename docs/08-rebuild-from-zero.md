@@ -62,7 +62,7 @@ systemctl restart x-ui
 | 备注 | `oneclick-reality` | 自己认得出的名字 |
 | 协议 | `vless` | 现代协议，配合 REALITY 最稳 |
 | 监听端口 | `443` | 客户端连的端口 |
-| 传输协议 | `tcp` | REALITY 只支持 TCP |
+| 传输协议 | `RAW`（旧版叫 `tcp`，v3.11 改名为 RAW） | REALITY 只支持 TCP/RAW |
 | 安全 | `reality` | 借用真实网站证书伪装，不需要域名/证书 |
 | 目标(dest) | `www.microsoft.com:443` | 伪装对象，要支持 TLS1.3 + HTTP/2 |
 | SNI | `www.microsoft.com` | 必须与目标站域名一致 |
