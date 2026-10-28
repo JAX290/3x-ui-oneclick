@@ -53,6 +53,12 @@ msg "==> 删除程序文件"
 rm -rf /usr/local/x-ui
 rm -f /usr/bin/x-ui /etc/systemd/system/x-ui.service
 rm -rf /var/log/x-ui
+rm -f /etc/systemd/system/x-ui.service.d/no-ads.conf
+rmdir /etc/systemd/system/x-ui.service.d 2>/dev/null || true
+rm -f /etc/x-ui/hosts-noads
+if [[ -f /etc/hosts ]] && grep -q '3x-ui-no-ads' /etc/hosts; then
+    sed -i '/3x-ui-no-ads/d' /etc/hosts
+fi
 systemctl daemon-reload 2>/dev/null || true
 ok "程序文件已删除"
 

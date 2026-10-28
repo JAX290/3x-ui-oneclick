@@ -236,6 +236,17 @@ ufw status | grep -E '80|8080'              # 5. 系统防火墙放行了吗
 
 ---
 
+## H. 面板上的广告（赞助位）
+
+3x-ui v3.x 在登录页/仪表盘有赞助商广告位。本仓库默认部署时已屏蔽。
+
+- 广告又出现了 / 想重新关闭：`bash /root/no-ads.sh`，然后浏览器 `Ctrl + Shift + R`
+- 想让广告回来：`bash /root/no-ads.sh --restore`
+- 关掉后「更新面板」按钮不可用（副作用已知）：改用 `x-ui` 菜单更新，或重跑 `install.sh`
+- 详见 [07-remove-ads.md](07-remove-ads.md)
+
+---
+
 ## F. 还是搞不定
 
 1. 收集信息：

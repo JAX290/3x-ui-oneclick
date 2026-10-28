@@ -228,4 +228,17 @@ rm -f /etc/sysctl.d/99-3xui-oneclick.conf
 
 ---
 
+## 13. 去掉面板广告（赞助位）
+
+部署脚本默认已关闭。想恢复或重新关闭：
+
+```bash
+bash /root/no-ads.sh --restore    # 恢复官方（广告回来）
+bash /root/no-ads.sh              # 再次关闭
+```
+
+原理、副作用和兜底方案见 [07-remove-ads.md](07-remove-ads.md)。
+
+---
+
 返回 → [README](../README.md)

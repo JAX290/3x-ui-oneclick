@@ -37,3 +37,7 @@ jobs:
         run: |
           bash scripts/install.sh --help
           bash scripts/fetch-clients.sh --help
+          bash scripts/no-ads.sh --help
+
+      - name: 去广告脚本 dry-run（不做修改）
+        run: bash scripts/no-ads.sh --dry-run || true

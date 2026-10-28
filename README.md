@@ -29,6 +29,7 @@
 | 自己拼 `vless://` 链接 | 直接输出链接 + 终端二维码 |
 | 配防火墙 | 自动放行 SSH / 节点端口 / 面板端口 |
 | 客户端装不上（连不上 GitHub） | 自动把 APK/EXE 搬到服务器，生成下载页 |
+| 面板有赞助商广告 | 默认自动屏蔽（`--keep-sponsors` 可保留） |
 | 记一堆参数 | 全部写进 `/root/3xui-info.txt`，随时 `bash /root/info.sh` 回看 |
 
 ---
@@ -108,6 +109,7 @@ bash <(curl -Ls https://raw.githubusercontent.com/JAX290/3x-ui-oneclick/main/scr
 | 看面板运行状态 | `systemctl status x-ui --no-pager` |
 | 打开官方管理菜单 | `x-ui` |
 | 更新客户端安装包（APK/EXE） | `bash /root/fetch-clients.sh --force` |
+| 关闭 / 恢复面板广告 | `bash /root/no-ads.sh`（恢复加 `--restore`） |
 | 看安装日志 | `cat /var/log/3xui-oneclick.log` |
 | 卸载 | `bash /root/uninstall.sh` |
 
@@ -125,6 +127,7 @@ bash <(curl -Ls https://raw.githubusercontent.com/JAX290/3x-ui-oneclick/main/scr
 | [docs/04-client-setup.md](docs/04-client-setup.md) | 装客户端 | 手机/电脑各平台导入与验证 |
 | [docs/05-faq.md](docs/05-faq.md) | 出问题了 | 打不开面板 / 连不上 / 没网 / 很慢 |
 | [docs/06-maintain.md](docs/06-maintain.md) | 长期使用 | 备份、升级、加设备、换端口 |
+| [docs/07-remove-ads.md](docs/07-remove-ads.md) | 想去广告 | 面板赞助位怎么关、怎么恢复 |
 
 ---
 
@@ -144,6 +147,7 @@ bash /root/install.sh --help
 | `--email phone` | 客户端名字（多设备时用得上） |
 | `--no-firewall` | 不碰防火墙（自己在云控制台放行） |
 | `--no-clients` | 不下载客户端安装包、不开下载页（省流量/时间） |
+| `--keep-sponsors` | 保留面板的赞助商广告（默认已屏蔽） |
 | `--force` | 面板已装过时继续配置 |
 | `--reinstall` | 卸载重装 |
 
@@ -177,6 +181,7 @@ bash /root/install.sh --help
 | `--dry-run` 计划输出 | ✅ 通过（CI 在 Ubuntu 上实测） |
 | 入站 JSON 结构 | ✅ 已按 3x-ui v3.11.0 的 schema（前端 zod 定义 / OpenAPI）逐字段校验 |
 | 客户端包清单解析 | ✅ CI 实测解析成功：v2rayNG 2.3.11 / sing-box 1.14.4 / v2rayN 7.25.6 / Clash Verge 2.5.8（共 317MB） |
+| 去广告方案 | ✅ 已按上游源码确认链路（`sponsor.go` → `/sponsors` → 前端拉取失败即不渲染）；⚠️ systemd 挂载屏蔽未真机验证 |
 | 真实 VPS 端到端 | ⚠️ 首次发布，尚未在真机上跑通完整流程 |
 
 说明：安装步骤依据 3x-ui 官方非交互安装文档（`XUI_NONINTERACTIVE=1` + `/etc/x-ui/install-result.env`）；
