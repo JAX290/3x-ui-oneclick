@@ -128,6 +128,7 @@ bash <(curl -Ls https://raw.githubusercontent.com/JAX290/3x-ui-oneclick/main/scr
 | [docs/05-faq.md](docs/05-faq.md) | 出问题了 | 打不开面板 / 连不上 / 没网 / 很慢 |
 | [docs/06-maintain.md](docs/06-maintain.md) | 长期使用 | 备份、升级、加设备、换端口 |
 | [docs/07-remove-ads.md](docs/07-remove-ads.md) | 想去广告 | 面板赞助位怎么关、怎么恢复 |
+| [docs/08-rebuild-from-zero.md](docs/08-rebuild-from-zero.md) | 设置乱了/删光了 | 一键重装或手动从零重建，逐项解释设置作用 |
 
 ---
 
