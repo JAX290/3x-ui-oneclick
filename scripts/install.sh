@@ -722,7 +722,35 @@ else
     step "按参数保留面板赞助广告（--keep-sponsors）"
 fi
 
-# ---------------------------- 客户端安装包 -----------------------------------
+# ---------------------------- fail2ban 自检 ----------------------------------
+# IP 限制（limitIp）靠 fail2ban 的 3x-ipl jail 真正封禁；没装/没跑就只记录不封。
+step "检查 IP 限制依赖（fail2ban）"
+F2B_OK="0"
+f2b_check() {
+    command -v fail2ban-client >/dev/null 2>&1 || return 1
+    systemctl is-active --quiet fail2ban 2>/dev/null || return 1
+    fail2ban-client status 2>/dev/null | grep -q '3x-ipl' || return 1
+    return 0
+}
+if f2b_check; then
+    F2B_OK="1"
+    ok "fail2ban 运行中，3x-ipl jail 已加载"
+else
+    warn "fail2ban 未就绪，正在尝试自动配置（IP 限制需要它）..."
+    if command -v x-ui >/dev/null 2>&1; then
+        XUI_ENABLE_FAIL2BAN=true x-ui setup-fail2ban >/dev/null 2>&1 || true
+    fi
+    systemctl enable --now fail2ban >/dev/null 2>&1 || true
+    sleep 2
+    if f2b_check; then
+        F2B_OK="1"
+        ok "fail2ban 已配置好"
+    else
+        warn "fail2ban 仍未就绪：IP 限制会「只记录不封禁」。可手动跑： x-ui setup-fail2ban"
+    fi
+fi
+
+
 CLIENTS_URL=""
 if [[ "$DO_CLIENTS" == "1" ]]; then
     step "下载客户端安装包到本机（约 320MB，可加 --no-clients 跳过）"
@@ -793,6 +821,10 @@ cat > "$INFO_FILE" <<INFO
 【5】面板广告
   状态  : $([[ "${ADS_OFF:-0}" == "1" ]] && echo "已关闭（登录页/仪表盘的赞助位已屏蔽）" || echo "未关闭（默认会关闭，可运行 bash /root/no-ads.sh）")
   恢复  : bash /root/no-ads.sh --restore
+
+【6】IP 限制依赖（fail2ban）
+  状态  : $([[ "${F2B_OK:-0}" == "1" ]] && echo "正常（3x-ipl jail 已加载，limitIp 会真正封禁）" || echo "异常（limitIp 只记录不封禁）")
+  修复  : x-ui setup-fail2ban
 =============================================================
 INFO
 umask 022

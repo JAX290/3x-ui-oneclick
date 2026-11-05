@@ -210,6 +210,31 @@ command -v qrencode >/dev/null && qrencode -t ANSIUTF8 -m 1 "$LINK"
 
 改完后面板里 `sni` 正确、链接长度正常（约 280 字符），二维码就能扫了。
 
+### C9. 设置了「IP 限制」但完全不封禁
+
+IP 限制靠 **fail2ban** 的 `3x-ipl` jail 执行；没装/没跑时面板「只记录不封禁」。
+
+自检：
+
+```bash
+systemctl status fail2ban --no-pager
+fail2ban-client status            # 应看到 3x-ipl
+fail2ban-client status 3x-ipl     # 当前被封禁的 IP
+```
+
+修复（幂等，缺什么装什么）：
+
+```bash
+XUI_ENABLE_FAIL2BAN=true x-ui setup-fail2ban
+systemctl enable --now fail2ban
+```
+
+验证：超限后日志会出现
+`[LIMIT_IP] Email=xxx || Disconnecting OLD IP=1.2.3.4 || Timestamp=...`，
+且 `fail2ban-client status 3x-ipl` 能看到该 IP。
+
+> 封禁豁免 SSH 和面板端口，不会把你锁在门外；默认封禁 30 分钟。
+
 ---
 
 ## D. 能连上但没网 / 部分网站打不开

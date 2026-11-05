@@ -76,6 +76,17 @@ msg "  地址  : ${C_BLU}http://${IP:-服务器IP}:${PANEL_PORT}/${WEB_BASE_PATH
 [[ -n "$PANEL_USER" ]] && msg "  用户名: ${PANEL_USER}"
 [[ -n "$PANEL_PASS" ]] && msg "  密码  : ${PANEL_PASS}"
 msg "  服务  : $(systemctl is-active x-ui 2>/dev/null || echo unknown)"
+F2B_STATE="未知"
+if command -v fail2ban-client >/dev/null 2>&1 && systemctl is-active --quiet fail2ban 2>/dev/null; then
+    if fail2ban-client status 2>/dev/null | grep -q '3x-ipl'; then
+        F2B_STATE="正常（3x-ipl jail 已加载，IP 限制会封禁）"
+    else
+        F2B_STATE="fail2ban 在跑，但 3x-ipl jail 未加载（IP 限制不封禁）"
+    fi
+else
+    F2B_STATE="fail2ban 未安装/未运行（IP 限制只记录不封禁）"
+fi
+msg "  IP 限制: ${F2B_STATE}"
 msg ""
 
 # 生成节点链接：优先用已知参数自己拼（面板可能在不知道公网 IP 时给出空地址的链接）
