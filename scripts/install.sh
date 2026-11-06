@@ -41,6 +41,8 @@ PANEL_PATH=""
 CLIENT_EMAIL="user1"
 CLIENT_REMARK="oneclick-reality"
 SERVER_IP=""
+# 面板端口仅允许该 IP 访问（主控机），部署时可用 --master-ip 覆盖
+MASTER_IP="149.88.71.190"
 DO_FIREWALL="1"
 DO_BBR="1"
 DO_CLIENTS="1"
@@ -91,6 +93,7 @@ usage() {
   --panel-port PORT     面板端口（默认随机 20000-60000）
   --email NAME          客户端名称/邮箱标识（默认 user1）
   --server-ip IP        强制指定服务器公网 IP（NAT 机型需要）
+  --master-ip IP        面板端口仅允许该 IP 访问（默认 149.88.71.190，主控机）
   --no-firewall         不修改防火墙（你自己在云控制台放行端口）
   --no-bbr              不开 BBR
   --no-clients          不下载客户端安装包、不建下载页
@@ -121,6 +124,8 @@ while [[ $# -gt 0 ]]; do
         --email=*)    CLIENT_EMAIL="${1#*=}"; shift ;;
         --server-ip)  SERVER_IP="${2:?--server-ip 需要参数}"; shift 2 ;;
         --server-ip=*) SERVER_IP="${1#*=}"; shift ;;
+        --master-ip)   MASTER_IP="${2:?--master-ip 需要参数}"; shift 2 ;;
+        --master-ip=*) MASTER_IP="${1#*=}"; shift ;;
         --no-firewall) DO_FIREWALL="0"; shift ;;
         --no-bbr)      DO_BBR="0"; shift ;;
         --no-clients)  DO_CLIENTS="0"; shift ;;
@@ -206,7 +211,8 @@ if [[ "$DRY_RUN" == "1" ]]; then
     msg "伪装目标 dest : ${DEST}"
     msg "SNI           : ${SNI}"
     msg "客户端名称    : ${CLIENT_EMAIL}"
-    msg "防火墙        : $([[ "$DO_FIREWALL" == 1 ]] && echo '自动配置 ufw/firewalld' || echo '跳过')"
+    msg "防火墙        : $([[ "$DO_FIREWALL" == 1 ]] && echo "自动配置 ufw/firewalld" || echo '跳过')"
+    msg "面板访问限制  : $([[ "$DO_FIREWALL" == 1 ]] && echo "仅允许 ${MASTER_IP}（主控机）" || echo '未启用（需自行在云安全组放行）')"
     msg "BBR           : $([[ "$DO_BBR" == 1 ]] && echo '开启' || echo '跳过')"
     msg "公网 IP       : ${SERVER_IP:-（运行时自动探测）}"
     msg ""
@@ -630,7 +636,8 @@ step "[7/7] 配置防火墙"
 
 if [[ "$DO_FIREWALL" != "1" ]]; then
     warn "已跳过防火墙（--no-firewall）。请自行在云控制台/安全组放行："
-    warn "  TCP 22(SSH) / TCP ${VLESS_PORT} / TCP ${PANEL_PORT_ACTUAL}"
+    warn "  TCP 22(SSH) / TCP ${VLESS_PORT}   -> 公网"
+    warn "  TCP ${PANEL_PORT_ACTUAL}   -> 仅允许 ${MASTER_IP}"
 else
     SSH_PORT=$(sshd -T 2>/dev/null | awk '/^port /{print $2; exit}' || true)
     SSH_PORT="${SSH_PORT:-22}"
@@ -639,15 +646,19 @@ else
         ufw allow "${SSH_PORT}/tcp" >/dev/null 2>&1 || true
         if [[ "$SSH_PORT" != "22" ]]; then ufw allow 22/tcp >/dev/null 2>&1 || true; fi
         ufw allow "${VLESS_PORT}/tcp" >/dev/null 2>&1 || true
-        ufw allow "${PANEL_PORT_ACTUAL}/tcp" >/dev/null 2>&1 || true
+        # 面板端口：仅允许主控机 IP 访问
+        ufw allow from "${MASTER_IP}" to any port "${PANEL_PORT_ACTUAL}" proto tcp >/dev/null 2>&1 || true
         ufw --force enable >/dev/null 2>&1 || warn "ufw 启用失败，请手动检查。"
-        ok "ufw 已启用：放行 ${SSH_PORT} / ${VLESS_PORT} / ${PANEL_PORT_ACTUAL}"
+        ok "ufw 已启用：${SSH_PORT} / ${VLESS_PORT} 对公网开放"
+        ok "面板端口 ${PANEL_PORT_ACTUAL} 仅允许 ${MASTER_IP} 访问"
     elif command -v firewall-cmd >/dev/null 2>&1; then
         firewall-cmd --permanent --add-port="${SSH_PORT}/tcp" >/dev/null 2>&1 || true
         firewall-cmd --permanent --add-port="${VLESS_PORT}/tcp" >/dev/null 2>&1 || true
-        firewall-cmd --permanent --add-port="${PANEL_PORT_ACTUAL}/tcp" >/dev/null 2>&1 || true
+        # 面板端口：仅允许主控机 IP 访问
+        firewall-cmd --permanent --add-rich-rule="rule family=\"ipv4\" source address=\"${MASTER_IP}\" port port=\"${PANEL_PORT_ACTUAL}\" protocol=\"tcp\" accept" >/dev/null 2>&1 || true
         firewall-cmd --reload >/dev/null 2>&1 || true
-        ok "firewalld 已放行 ${SSH_PORT} / ${VLESS_PORT} / ${PANEL_PORT_ACTUAL}"
+        ok "firewalld 已放行 ${SSH_PORT} / ${VLESS_PORT} 对公网"
+        ok "面板端口 ${PANEL_PORT_ACTUAL} 仅允许 ${MASTER_IP} 访问"
     else
         warn "系统里没有 ufw/firewalld，跳过。请在云厂商安全组放行端口。"
     fi
@@ -839,6 +850,9 @@ printf '%s\n' "${C_GRN}${C_BLD}=================================================
 msg ""
 printf '%s\n' "${C_BLD}【 面板 】${C_RST}  ${C_DIM}浏览器打开，用来管理节点${C_RST}"
 msg "  地址  : ${C_BLU}http://${PUBLIC_IP:-服务器IP}:${PANEL_PORT_ACTUAL}/${WEB_BASE_PATH}${C_RST}"
+if [[ "$DO_FIREWALL" == "1" ]]; then
+    msg "  ${C_YEL}访问限制：仅 ${MASTER_IP} 可以打开这个地址${C_RST}"
+fi
 msg "  用户名: ${PANEL_USER}"
 msg "  密码  : ${PANEL_PASS}"
 msg ""
