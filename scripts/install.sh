@@ -456,6 +456,21 @@ if [[ -z "$API_TOKEN" ]]; then
         die "登录面板 API 失败，无法自动创建节点。请手动打开面板创建（方法见 docs/03-oneclick.md 最后的“手动兜底”）。"
     CSRF=$(curl -sS --max-time 10 -b "$COOKIE_JAR" "$PANEL_BASE/csrf-token" 2>/dev/null | jq -r '.obj // empty' || true)
     ok "登录成功"
+
+    # 登录成功后，顺手创建一个长期 admin token，供主控远程管理使用
+    if [[ -z "$API_TOKEN" && -n "$CSRF" ]]; then
+        TOKEN_RESP=$(curl -sS --max-time 10 -b "$COOKIE_JAR" -X POST \
+            -H 'Content-Type: application/json' \
+            -H "X-CSRF-Token: $CSRF" \
+            -d '{"name":"jax-app","scope":"admin","expiresAt":0}' \
+            "$PANEL_BASE/panel/api/setting/apiTokens/create" 2>/dev/null || true)
+        API_TOKEN=$(printf '%s' "$TOKEN_RESP" | jq -r '.obj.token // empty' 2>/dev/null || true)
+        if [[ -n "$API_TOKEN" ]]; then
+            ok "已生成 API Token（admin 权限，永久有效）"
+        else
+            warn "API Token 自动生成失败，可到面板「设置 → 安全 → API Token」手动创建"
+        fi
+    fi
 fi
 
 api() { # $1=GET|POST  $2=路径  [$3=JSON body]
@@ -773,6 +788,7 @@ SHORT_ID=$(printf '%q' "$SHORT_ID")
 PUBLIC_KEY=$(printf '%q' "$PUB")
 SERVER_IP=$(printf '%q' "$PUBLIC_IP")
 LINK=$(printf '%q' "$LINK")
+API_TOKEN=$(printf '%q' "$API_TOKEN")
 STATE
 
 cat > "$INFO_FILE" <<INFO
@@ -796,6 +812,9 @@ cat > "$INFO_FILE" <<INFO
   SNI   : ${SNI}
   shortId: ${SHORT_ID}
   链接  : ${LINK}
+
+【3.5】API Token（主控远程管理用，勿泄露）
+  Token : ${API_TOKEN:-（未生成，可到面板手动创建）}
 
 【4】可视化视图
   以上信息随时可看: bash /root/info.sh
@@ -837,6 +856,11 @@ if [[ "${AUTO_FAIL:-0}" != "1" ]] && command -v qrencode >/dev/null 2>&1; then
     if ! qrencode -t ANSIUTF8 -m 1 "$LINK"; then
         warn "二维码生成失败（链接仍然可用）。"
     fi
+    msg ""
+fi
+if [[ -n "$API_TOKEN" ]]; then
+    printf '%s\n' "${C_BLD}【 API Token 】${C_RST}  ${C_DIM}复制给主控，用于远程管理这台节点${C_RST}"
+    msg "  ${C_BLU}${API_TOKEN}${C_RST}"
     msg ""
 fi
 msg "${C_DIM}以上信息已保存到 ${INFO_FILE}（仅 root 可读）。${C_RST}"
