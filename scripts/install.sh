@@ -45,7 +45,6 @@ SERVER_IP=""
 MASTER_IP="149.88.71.190"
 DO_FIREWALL="1"
 DO_BBR="1"
-DO_CLIENTS="1"
 DO_NOADS="1"
 DRY_RUN="0"
 FORCE="0"
@@ -96,7 +95,6 @@ usage() {
   --master-ip IP        面板端口仅允许该 IP 访问（默认 149.88.71.190，主控机）
   --no-firewall         不修改防火墙（你自己在云控制台放行端口）
   --no-bbr              不开 BBR
-  --no-clients          不下载客户端安装包、不建下载页
   --keep-sponsors       保留面板里的赞助广告（默认会关掉）
   --force               面板已安装时仍继续（会复用已有配置）
   --reinstall           卸载后重装面板
@@ -128,7 +126,6 @@ while [[ $# -gt 0 ]]; do
         --master-ip=*) MASTER_IP="${1#*=}"; shift ;;
         --no-firewall) DO_FIREWALL="0"; shift ;;
         --no-bbr)      DO_BBR="0"; shift ;;
-        --no-clients)  DO_CLIENTS="0"; shift ;;
         --keep-sponsors) DO_NOADS="0"; shift ;;
         --force)       FORCE="1"; shift ;;
         --reinstall)   REINSTALL="1"; FORCE="1"; shift ;;
@@ -689,7 +686,7 @@ fi
 # 把 info.sh / uninstall.sh / install.sh 放到 /root，方便以后直接运行
 install_helpers() {
     local f tmp url ok_any=0
-    for f in install.sh info.sh uninstall.sh fetch-clients.sh no-ads.sh; do
+    for f in install.sh info.sh uninstall.sh no-ads.sh; do
         tmp="/root/.${f}.tmp"
         if [[ -f "/root/$f" ]]; then
             ok_any=1
@@ -707,7 +704,7 @@ install_helpers() {
         done
         rm -f "$tmp"
     done
-    chmod +x /root/install.sh /root/info.sh /root/uninstall.sh /root/fetch-clients.sh /root/no-ads.sh 2>/dev/null || true
+    chmod +x /root/install.sh /root/info.sh /root/uninstall.sh /root/no-ads.sh 2>/dev/null || true
     if [[ "$ok_any" == "1" ]]; then
         ok "辅助脚本已放到 /root（info.sh / install.sh / uninstall.sh）"
     else
@@ -762,26 +759,6 @@ else
 fi
 
 
-CLIENTS_URL=""
-if [[ "$DO_CLIENTS" == "1" ]]; then
-    step "下载客户端安装包到本机（约 320MB，可加 --no-clients 跳过）"
-    if [[ -x /root/fetch-clients.sh ]]; then
-        if bash /root/fetch-clients.sh; then
-            if [[ -f /etc/x-ui/clients.env ]]; then
-                # shellcheck disable=SC1091
-                . /etc/x-ui/clients.env
-                CLIENTS_URL="${CLIENTS_URL:-}"
-            fi
-        else
-            warn "客户端下载页没配置成功（不影响节点使用），可稍后重跑 bash /root/fetch-clients.sh"
-        fi
-    else
-        warn "没找到 /root/fetch-clients.sh，跳过客户端下载"
-    fi
-else
-    step "按参数跳过客户端下载（--no-clients）"
-fi
-
 # ---------------------------- 保存与输出 -------------------------------------
 mkdir -p /etc/x-ui
 umask 077
@@ -819,11 +796,6 @@ cat > "$INFO_FILE" <<INFO
   SNI   : ${SNI}
   shortId: ${SHORT_ID}
   链接  : ${LINK}
-
-【3】客户端下载（手机/电脑连不上 GitHub 用这个）
-  地址  : ${CLIENTS_URL:-（未启用；运行 bash /root/fetch-clients.sh 可开启）}
-  内容  : Android APK / Windows EXE-ZIP / macOS dmg（不含节点信息）
-  更新  : bash /root/fetch-clients.sh --force
 
 【4】可视化视图
   以上信息随时可看: bash /root/info.sh
@@ -868,11 +840,6 @@ if [[ "${AUTO_FAIL:-0}" != "1" ]] && command -v qrencode >/dev/null 2>&1; then
     msg ""
 fi
 msg "${C_DIM}以上信息已保存到 ${INFO_FILE}（仅 root 可读）。${C_RST}"
-if [[ -n "$CLIENTS_URL" ]]; then
-    msg ""
-    printf '%s\n' "${C_BLD}【 客户端下载页 】${C_RST}  ${C_DIM}手机/电脑浏览器打开，直接下 APK/EXE${C_RST}"
-    msg "  ${C_BLU}${CLIENTS_URL}${C_RST}"
-fi
 if [[ "${ADS_OFF:-0}" == "1" ]]; then
     printf '%s\n' "${C_DIM}面板广告：已关闭（要用官方的赞助位可执行 bash /root/no-ads.sh --restore）${C_RST}"
 fi
